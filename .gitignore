@@ -1,0 +1,7 @@
+priv/
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfplan
+terraform/*.zip
+terraform/crash.log
