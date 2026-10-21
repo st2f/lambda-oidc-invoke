@@ -1,0 +1,46 @@
+name: Invoke dummy Lambda
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+
+jobs:
+  invoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      AWS_REGION: eu-north-1
+      FUNCTION_NAME: lambda-oidc-invoke-dummy
+    steps:
+      - name: Check configuration
+        run: |
+          if [[ -z "$AWS_ROLE_ARN" ]]; then
+            echo "::error::Set the AWS_ROLE_ARN repository secret to the GitHub OIDC role ARN."
+            exit 1
+          fi
+
+      - name: Authenticate to AWS with OIDC
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-lambda-${{ github.run_id }}
+          mask-aws-account-id: true
+
+      - name: Invoke dummy Lambda
+        run: |
+          aws lambda invoke \
+            --function-name "$FUNCTION_NAME" \
+            --invocation-type RequestResponse \
+            --cli-binary-format raw-in-base64-out \
+            --payload '{"hello":"github"}' \
+            response.json > invocation.json
+
+          cat invocation.json
+          cat response.json
+
+          jq -e '.StatusCode == 200 and (has("FunctionError") | not)' invocation.json
+          jq -e '. == {"ok": true, "payload": {"hello": "github"}}' response.json

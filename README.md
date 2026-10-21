@@ -41,3 +41,7 @@ cat /tmp/lambda-oidc-invoke-response.json
 ```
 
 Successful execution returns `StatusCode: 200`, no `FunctionError`, and the JSON response shown above. A successful API request alone does not indicate that the handler succeeded.
+
+For GitHub Actions, set the repository secret `AWS_ROLE_ARN` to the existing GitHub OIDC role ARN under **Settings → Secrets and variables → Actions → Secrets**. The role's trust policy must allow this repository's OIDC subject.
+
+After the workflow is pushed to the default branch, select **Actions → Invoke dummy Lambda → Run workflow**. The workflow authenticates through OIDC, invokes the Lambda synchronously, and checks both the invocation metadata and response. No AWS access keys are required.
