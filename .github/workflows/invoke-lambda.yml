@@ -1,7 +1,14 @@
 name: Invoke dummy Lambda
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
+    inputs:
+      should_fail:
+        description: Request a Lambda execution failure (the workflow should fail)
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -14,6 +21,7 @@ jobs:
       AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
       AWS_REGION: eu-north-1
       FUNCTION_NAME: lambda-oidc-invoke-dummy
+      SHOULD_FAIL: ${{ toJSON(inputs.should_fail || false) }}
     steps:
       - name: Check configuration
         run: |
@@ -32,15 +40,23 @@ jobs:
 
       - name: Invoke dummy Lambda
         run: |
+          payload=$(jq -nc --argjson shouldFail "$SHOULD_FAIL" \
+            '{hello: "github", shouldFail: $shouldFail}')
+
           aws lambda invoke \
             --function-name "$FUNCTION_NAME" \
             --invocation-type RequestResponse \
             --cli-binary-format raw-in-base64-out \
-            --payload '{"hello":"github"}' \
+            --payload "$payload" \
             response.json > invocation.json
 
           cat invocation.json
           cat response.json
 
-          jq -e '.StatusCode == 200 and (has("FunctionError") | not)' invocation.json
-          jq -e '. == {"ok": true, "payload": {"hello": "github"}}' response.json
+          if ! jq -e '.StatusCode == 200 and (has("FunctionError") | not)' invocation.json; then
+            echo "::error::Lambda invocation or handler execution failed. See the response above."
+            exit 1
+          fi
+
+          jq -e --argjson expected "$payload" \
+            '. == {ok: true, payload: $expected}' response.json

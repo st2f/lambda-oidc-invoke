@@ -44,4 +44,19 @@ Successful execution returns `StatusCode: 200`, no `FunctionError`, and the JSON
 
 For GitHub Actions, set the repository secret `AWS_ROLE_ARN` to the existing GitHub OIDC role ARN under **Settings → Secrets and variables → Actions → Secrets**. The role's trust policy must allow this repository's OIDC subject.
 
-After the workflow is pushed to the default branch, select **Actions → Invoke dummy Lambda → Run workflow**. The workflow authenticates through OIDC, invokes the Lambda synchronously, and checks both the invocation metadata and response. No AWS access keys are required.
+The workflow runs on pushes to `main` and can also be started under **Actions → Invoke dummy Lambda → Run workflow**. It authenticates through OIDC, invokes the Lambda synchronously, and checks both the invocation metadata and response. No AWS access keys are required.
+
+The manual **should_fail** checkbox controls the payload's `shouldFail` field:
+
+| Payload | Lambda behavior | Workflow result |
+| --- | --- | --- |
+| `{"shouldFail": false}` | Returns `ok: true` and the payload | Pass |
+| `{"shouldFail": true}` | Throws an error | Fail |
+
+Push runs use `shouldFail: false`. To exercise both paths, run the workflow once with the checkbox unchecked and once checked. A Lambda handler error can still produce invocation metadata with `StatusCode: 200`; the workflow checks `FunctionError` and exits with a nonzero status when it is present.
+
+Run the handler tests locally:
+
+```sh
+node --test lambda/index.test.mjs
+```
