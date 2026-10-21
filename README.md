@@ -4,13 +4,15 @@ A small learning project for invoking an AWS Lambda directly from GitHub Actions
 
 A dummy Lambda echoes its JSON input with an `ok: true` result. Terraform manages the function, its execution role, and a CloudWatch log group with seven-day retention. No triggers are configured.
 
+The existing `github-ci-role` receives an inline policy granting `lambda:InvokeFunction` on this function's exact ARN. Terraform looks up the role without managing its trust policy or other permissions.
+
 Example response for the payload `{"hello":"github"}`:
 
 ```json
 { "ok": true, "payload": { "hello": "github" } }
 ```
 
-Configure AWS CLI credentials and set `allowed_account_ids` in `terraform/main.tf` to the target account ID. Initialize, validate, and preview the infrastructure:
+Configure AWS CLI credentials and set `allowed_account_ids` in `terraform/main.tf` to the target account ID. The GitHub OIDC role must already exist; its name is configured in `terraform/github.tf`. Initialize, validate, and preview the infrastructure:
 
 ```sh
 terraform -chdir=terraform init
